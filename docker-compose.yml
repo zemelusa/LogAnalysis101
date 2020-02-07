@@ -1,0 +1,65 @@
+version: "2.4"
+services:
+
+  elasticsearch:
+    image: elasticsearch:7.5.2
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elk
+    restart: always
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    environment:
+      - cluster.name=es-docker
+      - node.name=node1
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    mem_limit: 4g
+
+  logstash:
+    image: logstash:7.5.2
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./logstash/config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/patterns:/usr/share/logstash/patterns:ro
+      - ./logs:/logs:ro
+    container_name: logstash
+    ports:
+      - "5000:5000"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    restart: always
+    mem_limit: 2g
+    environment:
+      - "LS_JAVA_OPTS=-Xmx1g -Xms1g"
+
+  kibana:
+    image: kibana:7.5.2
+    volumes:
+      - ./kibana/config/:/usr/share/kibana/config:ro
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    restart: always
+    depends_on:
+      - elasticsearch
+    mem_limit: 1g
+
+networks:
+  elk:
+    driver: bridge
